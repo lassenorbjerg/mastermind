@@ -137,6 +137,7 @@ def draw_board_guess(
     guess_stage: int,
     prev_guesses: list[list[str | None]],
     check: bool = False,
+    prev_rates: list[list[str | None]] = None,
 ):
     WIN.fill((255, 255, 255))
 
@@ -172,14 +173,19 @@ def draw_board_guess(
                     10,
                 )
 
-    for a in range(8):
+    check_pegs = [[], [], [], [], [], [], [], []]
+    for a, col_lst in enumerate(prev_rates):
+        cnt = -1
         for x in range(2):
             for y in range(2):
-                circle(
-                    WIN,
-                    (0, 0, 0),
-                    (board_x + 15 * x + 310, board_y + 15 * y + 50 * a + 240),
-                    5,
+                cnt += 1
+                check_pegs[guess_stage].append(
+                    circle(
+                        WIN,
+                        pegs[col_lst[cnt]] if col_lst[cnt] is not None else (0, 0, 0),
+                        (board_x + 15 * x + 310, board_y + 15 * y + 50 * a + 240),
+                        5,
+                    )
                 )
 
     pygame.draw.rect(WIN, (50, 50, 50), (60, 100, 280, 50), border_radius=10)
@@ -328,7 +334,13 @@ def main():
                         draw_board_set_code(current_code, hidden)
             elif state == states.guess:
                 current_code = [None, None, None, None]
-                draw_board_guess(current_code, guess_code, guess_stage, prev_guesses)
+                draw_board_guess(
+                    current_code,
+                    guess_code,
+                    guess_stage,
+                    prev_guesses,
+                    prev_rates=prev_rates,
+                )
                 checkbox = circle(WIN, (50, 200, 50), (200, 575 - 500), 10)
                 pygame.draw.line(WIN, (0, 0, 0), (195, 575 - 500), (200, 580 - 500), 1)
                 pygame.draw.line(WIN, (0, 0, 0), (200, 580 - 500), (203, 569 - 500), 1)
@@ -341,7 +353,11 @@ def main():
                         move_color = pegs[list(pegs)[num]]
                 if dragging:
                     draw_board_guess(
-                        current_code, guess_code, guess_stage, prev_guesses
+                        current_code,
+                        guess_code,
+                        guess_stage,
+                        prev_guesses,
+                        prev_rates=prev_rates,
                     )
                     circle(WIN, move_color, (mx, my), 10)
                     for num, code in enumerate(code_objects):
@@ -355,14 +371,23 @@ def main():
                         dragging = False
                         move_color = None
                         draw_board_guess(
-                            current_code, guess_code, guess_stage, prev_guesses
+                            current_code,
+                            guess_code,
+                            guess_stage,
+                            prev_guesses,
+                            prev_rates=prev_rates,
                         )
                 if pygame.mouse.get_pressed()[0]:
                     if checkbox.collidepoint(mx, my) and guess_code.count(None) == 0:
                         state = states.rate
                         guess_stage += 1
                         draw_board_guess(
-                            current_code, guess_code, guess_stage, prev_guesses, True
+                            current_code,
+                            guess_code,
+                            guess_stage,
+                            prev_guesses,
+                            True,
+                            prev_rates=prev_rates,
                         )
                         print(guess_code, actual_code)
                         if guess_code == actual_code:
