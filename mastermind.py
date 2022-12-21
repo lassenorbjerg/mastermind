@@ -54,7 +54,11 @@ def make_check_pegs(displacement: tuple[int, int] = (0, 0)):
     return peg_objects
 
 
-def make_code(code: list[str | None], displacement: tuple[int, int] = (0, 0)):
+def make_code(
+    code: list[str | None],
+    displacement: tuple[int, int] = (0, 0),
+    alternate_color: tuple[int, int, int] = (255, 255, 255),
+):
 
     if code is not None and len(code) != 4:
         raise ValueError("Code must be 4 colors long")
@@ -64,7 +68,7 @@ def make_code(code: list[str | None], displacement: tuple[int, int] = (0, 0)):
         code_objects.append(
             circle(
                 WIN,
-                pegs[col] if col is not None else (255, 255, 255),
+                pegs[col] if col is not None else alternate_color,
                 (125 + 50 * x + dx, 625 + dy),
                 10,
             )
@@ -179,7 +183,7 @@ def draw_board_guess(
         for x in range(2):
             for y in range(2):
                 cnt += 1
-                check_pegs[guess_stage].append(
+                check_pegs[guess_stage - 1].append(
                     circle(
                         WIN,
                         pegs[col_lst[cnt]] if col_lst[cnt] is not None else (0, 0, 0),
@@ -227,7 +231,7 @@ def draw_board_rate(
         for x in range(2):
             for y in range(2):
                 cnt += 1
-                check_pegs[guess_stage].append(
+                check_pegs[guess_stage - 1].append(
                     circle(
                         WIN,
                         pegs[col_lst[cnt]] if col_lst[cnt] is not None else (0, 0, 0),
@@ -238,9 +242,9 @@ def draw_board_rate(
 
     pygame.draw.rect(WIN, (50, 50, 50), (60, 100, 280, 50), border_radius=10)
 
-    make_code(prev_rates[guess_stage - 2], (0, -500))
+    make_code(prev_rates[guess_stage - 2], (0, -500), (0, 0, 0))
 
-    return check_pegs[guess_stage]
+    return check_pegs[guess_stage - 1]
 
 
 def move_peg(peg, x, y):
@@ -381,14 +385,7 @@ def main():
                     if checkbox.collidepoint(mx, my) and guess_code.count(None) == 0:
                         state = states.rate
                         guess_stage += 1
-                        draw_board_guess(
-                            current_code,
-                            guess_code,
-                            guess_stage,
-                            prev_guesses,
-                            True,
-                            prev_rates=prev_rates,
-                        )
+
                         print(guess_code, actual_code)
                         if guess_code == actual_code:
                             big_font = pygame.font.Font(None, 100)
@@ -406,6 +403,14 @@ def main():
                             pygame.display.update()
                             pygame.time.delay(2000)
                             run = False
+                        draw_board_guess(
+                            current_code,
+                            guess_code,
+                            guess_stage,
+                            prev_guesses,
+                            True,
+                            prev_rates=prev_rates,
+                        )
                         guess_code = [None, None, None, None]
             elif state == states.rate:
                 rate_objects = draw_board_rate(prev_guesses, prev_rates, guess_stage)
