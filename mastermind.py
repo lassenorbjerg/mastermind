@@ -364,23 +364,23 @@ def main():
                         draw_board_guess(
                             current_code, guess_code, guess_stage, prev_guesses, True
                         )
-
-                        # if guess_code == actual_code:
-                        #     big_font = pygame.font.Font(None, 100)
-                        #     text = font.render("Guesser wins", True, (255, 255, 255))
-                        #     text_rect = text.get_rect(center=(WIDTH // 2, HEIGHT // 2))
-                        #     WIN.blit(text, text_rect)
-                        #     pygame.display.update()
-                        #     pygame.time.delay(2000)
-                        #     run = False
-                        # elif guess_stage == 9:
-                        #     big_font = pygame.font.Font(None, 100)
-                        #     text = font.render("Codemaker wins", True, (255, 255, 255))
-                        #     text_rect = text.get_rect(center=(WIDTH // 2, HEIGHT // 2))
-                        #     WIN.blit(text, text_rect)
-                        #     pygame.display.update()
-                        #     pygame.time.delay(2000)
-                        #     run = False
+                        print(guess_code, actual_code)
+                        if guess_code == actual_code:
+                            big_font = pygame.font.Font(None, 100)
+                            text = font.render("Guesser wins", True, (255, 255, 255))
+                            text_rect = text.get_rect(center=(WIDTH // 2, HEIGHT // 2))
+                            WIN.blit(text, text_rect)
+                            pygame.display.update()
+                            pygame.time.delay(2000)
+                            run = False
+                        elif guess_stage == 9:
+                            big_font = pygame.font.Font(None, 100)
+                            text = font.render("Codemaker wins", True, (255, 255, 255))
+                            text_rect = text.get_rect(center=(WIDTH // 2, HEIGHT // 2))
+                            WIN.blit(text, text_rect)
+                            pygame.display.update()
+                            pygame.time.delay(2000)
+                            run = False
                         guess_code = [None, None, None, None]
             elif state == states.rate:
                 rate_objects = draw_board_rate(prev_guesses, prev_rates, guess_stage)
@@ -409,8 +409,13 @@ def main():
                         dragging = False
                         move_color = None
                         draw_board_rate(prev_guesses, prev_rates, guess_stage)
-                if checkbox.collidepoint(mx, my):
-                    state = states.guess
+                if pygame.mouse.get_pressed()[0]:
+                    if checkbox.collidepoint(mx, my):
+                        state = states.guess
+                        rate = [None, None, None, None]
+                        draw_board_rate(prev_guesses, prev_rates, guess_stage)
+                        print(rate)
+                # print(mx, my)
         pygame.display.update()
 
     pygame.quit()
