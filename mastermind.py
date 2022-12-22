@@ -336,7 +336,7 @@ class Board:
                 circle(WIN, col, (150 + 50 * num + dx, 700 + dy - 475), 5)
             )
 
-        self.peg_objects = peg_objects
+        return peg_objects
 
     def draw_big_peg_holes_code(self, displacement: tuple[int, int]):
         dx, dy = displacement
@@ -594,9 +594,9 @@ class Board:
 
         pygame.draw.rect(WIN, (50, 50, 50), (60, 100, 280, 50), border_radius=10)
 
-        make_code(self.prev_rates[self.guess_stage - 2], (0, -500), (0, 0, 0))
+        self.make_code(self.prev_rates[self.guess_stage - 2], (0, -500), (0, 0, 0))
 
-        self.rate_objects = self.check_pegs[self.guess_stage - 1]
+        return check_pegs[self.guess_stage - 1]
 
 
 def main():
@@ -638,8 +638,8 @@ def main():
                 if pygame.mouse.get_pressed()[0]:
                     run = board.click_checkbox_guess((mx, my), checkbox)
             elif board.state == states.rate:
-                board.draw_board_rate()
-                board.make_check_pegs()
+                board.rate_objects = board.draw_board_rate()
+                board.check_pegs = board.make_check_pegs()
                 checkbox = circle(WIN, (50, 200, 50), (200, 575 - 500), 10)
                 pygame.draw.line(WIN, (0, 0, 0), (195, 575 - 500), (200, 580 - 500), 1)
                 pygame.draw.line(WIN, (0, 0, 0), (200, 580 - 500), (203, 569 - 500), 1)
@@ -653,9 +653,7 @@ def main():
                             num
                         ]
                 if board.dragging:
-                    draw_board_rate(
-                        board.prev_guesses, board.prev_rates, board.guess_stage
-                    )
+                    board.draw_board_rate()
                     circle(WIN, board.move_color, (mx, my), 5)
                     for num, code in enumerate(board.code_objects):
                         if code.collidepoint(mx, my):
@@ -669,9 +667,7 @@ def main():
                     if not mouse_down:
                         board.dragging = False
                         board.move_color = None
-                        draw_board_rate(
-                            board.prev_guesses, board.prev_rates, board.guess_stage
-                        )
+                        board.draw_board_rate()
                 if pygame.mouse.get_pressed()[0]:
 
                     # TODO: Fix this
