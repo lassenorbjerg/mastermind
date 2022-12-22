@@ -257,41 +257,172 @@ class states(str, enum.Enum):
     rate = "rate"
 
 
+class Board:
+    def __init__(self):
+        self.dragging = False
+        self.move_color = None
+        self.code_objects = draw_board_set_code([None, None, None, None])
+        self.current_code = [None, None, None, None]
+        self.hidden = False
+        self.peg_objects = make_pegs()
+        self.state = states.code
+        self.actual_code = [None, None, None, None]
+        self.guess_code = [None, None, None, None]
+        self.guess_stage = 1
+        self.prev_guesses = [
+            [None, None, None, None],
+            [None, None, None, None],
+            [None, None, None, None],
+            [None, None, None, None],
+            [None, None, None, None],
+            [None, None, None, None],
+            [None, None, None, None],
+            [None, None, None, None],
+        ]
+        self.check_pegs = None
+        self.prev_rates = [
+            [None, None, None, None],
+            [None, None, None, None],
+            [None, None, None, None],
+            [None, None, None, None],
+            [None, None, None, None],
+            [None, None, None, None],
+            [None, None, None, None],
+            [None, None, None, None],
+        ]
+        self.rate_objects = None
+        self.rate = [None, None, None, None]
+
+    def make_pegs(self, displacement: tuple[int, int] = (0, 0)):
+        peg_objects = []
+        dx, dy = displacement
+        for num, key in enumerate(pegs):
+            if key == "white" and displacement == (0, 0):
+                peg_objects.append(
+                    circle(WIN, (255, 255, 255), (355 + dx, 625 + dy), 10)
+                )
+            elif key == "black" or key == "white":
+                continue
+            else:
+                peg_objects.append(
+                    circle(WIN, pegs[key], (70 + 50 * num + dx, 700 + dy), 10)
+                )
+
+        return peg_objects
+
+    def draw_board_set_code(self, code):
+        WIN.fill((60, 115, 154))
+
+        board_x = 25
+        board_y = 50
+        board_width = 350
+        board_height = 700
+        corner_radius = 20
+
+        pygame.draw.rect(
+            WIN,
+            (139, 69, 19),
+            (board_x, board_y, board_width, board_height),
+            border_radius=corner_radius,
+        )
+
+        make_pegs()
+
+        for x in range(4):
+            for y in range(8):
+                circle(
+                    WIN, (0, 0, 0), (board_x + 75 * x + 50, board_y + 50 * y + 50), 10
+                )
+
+        for a in range(8):
+            for x in range(2):
+                for y in range(2):
+                    circle(
+                        WIN,
+                        (0, 0, 0),
+                        (board_x + 15 * x + 310, board_y + 15 * y + 50 * a + 40),
+                        5,
+                    )
+
+        pygame.draw.rect(WIN, (50, 50, 50), (60, 600, 280, 50), border_radius=10)
+        if self.hidden:
+            WIN.blit(hidden_eye, (30, 615))
+            return make_code(["black", "black", "black", "black"])
+        else:
+            WIN.blit(visible_eye, (30, 615))
+            return make_code(code)
+
+    def draw_checkbox_code(self):
+        checkbox = circle(WIN, (50, 200, 50), (200, 575), 10)
+        pygame.draw.line(WIN, (0, 0, 0), (195, 575), (200, 580), 1)
+        pygame.draw.line(WIN, (0, 0, 0), (200, 580), (203, 569), 1)
+        return checkbox
+
+    def make_text(self, text, pos, color=(0, 0, 0)):
+        text = font.render(text, True, color)
+        text_rect = text.get_rect()
+        text_rect.center = pos
+        WIN.blit(text, text_rect)
+
+    def check_peg_drag(self, mouse_pos, mouse_down):
+        mx, my = mouse_pos
+        for num, peg in enumerate(self.peg_objects):
+            if peg.collidepoint(mx, my):
+                self.dragging = mouse_down
+                self.move_color = pegs[list(pegs)[num]]
+
+    def eye_click(self, mouse_pos):
+        mx, my = mouse_pos
+        if hidden_eye.get_rect(topleft=(30, 615)).collidepoint(mx, my):
+            self.hidden = not self.hidden
+            draw_board_set_code(self.current_code, self.hidden)
+
+    def checkbox_click_code(
+        self,
+        mouse_pos,
+        checkbox,
+    ):
+        mx, my = mouse_pos
+        if (
+            checkbox.collidepoint(mx, my)
+            and self.current_code.count(None) == 0
+            and self.current_code.count("white") == 0
+        ):
+            self.actual_code = self.current_code.copy()
+            self.state = states.guess
+            self.peg_objects = make_pegs((0, -475))
+            self.code_objects = make_code(self.guess_code, (0, -500))
+
+    def set_peg_code(self, mouse_pos, mouse_down):
+        mx, my = mouse_pos
+        if self.dragging:
+            self.draw_board_set_code(self.current_code)
+            circle(WIN, self.move_color, (mx, my), 10)
+            for num, code in enumerate(self.code_objects):
+                if code.collidepoint(mx, my) and not self.hidden:
+                    self.current_code[num] = dict(zip(pegs.values(), pegs.keys()))[
+                        self.move_color
+                    ]
+                    break
+
+            if not mouse_down:
+                self.dragging = False
+                self.move_color = None
+                self.draw_board_set_code(self.current_code)
+
+        if self.dragging and mouse_down:
+            for num, peg in enumerate(self.code_objects):
+                if peg.collidepoint(mx, my):
+                    self.current_code[num] = dict(zip(pegs.values(), pegs.keys()))[
+                        self.move_color
+                    ]
+
+
 def main():
     run = True
-    dragging = False
-    move_color = None
-    code_objects = draw_board_set_code([None, None, None, None])
-    current_code = [None, None, None, None]
-    hidden = False
-    peg_objects = make_pegs()
-    state = states.code
-    actual_code = [None, None, None, None]
-    guess_code = [None, None, None, None]
-    guess_stage = 1
-    prev_guesses = [
-        [None, None, None, None],
-        [None, None, None, None],
-        [None, None, None, None],
-        [None, None, None, None],
-        [None, None, None, None],
-        [None, None, None, None],
-        [None, None, None, None],
-        [None, None, None, None],
-    ]
-    check_pegs = None
-    prev_rates = [
-        [None, None, None, None],
-        [None, None, None, None],
-        [None, None, None, None],
-        [None, None, None, None],
-        [None, None, None, None],
-        [None, None, None, None],
-        [None, None, None, None],
-        [None, None, None, None],
-    ]
-    rate_objects = None
-    rate = [None, None, None, None]
+
+    board = Board()
+
     while run:
         mx, my = pygame.mouse.get_pos()
         mouse_down = pygame.mouse.get_pressed()[0]
@@ -299,51 +430,26 @@ def main():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 run = False
-            if state == states.code:
-                text = font.render("Set code", True, (0, 0, 0))
-                text_rect = text.get_rect(center=(200, 550))
-                WIN.blit(text, text_rect)
-                checkbox = circle(WIN, (50, 200, 50), (200, 575), 10)
-                pygame.draw.line(WIN, (0, 0, 0), (195, 575), (200, 580), 1)
-                pygame.draw.line(WIN, (0, 0, 0), (200, 580), (203, 569), 1)
-                for num, peg in enumerate(peg_objects):
-                    if peg.collidepoint(mx, my):
-                        dragging = mouse_down
-                        move_color = pegs[list(pegs)[num]]
+            if board.state == states.code:
+                board.make_text("Set code", (200, 550))
+                checkbox = board.draw_checkbox_code()
+                board.check_peg_drag((mx, my), mouse_down)
+
                 if pygame.mouse.get_pressed()[0]:
-                    if hidden_eye.get_rect(topleft=(30, 615)).collidepoint(mx, my):
-                        hidden = not hidden
-                        draw_board_set_code(current_code, hidden)
-                    if (
-                        checkbox.collidepoint(mx, my)
-                        and current_code.count(None) == 0
-                        and current_code.count("white") == 0
-                    ):
-                        actual_code = current_code.copy()
-                        state = states.guess
-                        peg_objects = make_pegs((0, -475))
-                        code_objects = make_code(guess_code, (0, -500))
-                if dragging:
-                    draw_board_set_code(current_code, hidden)
-                    circle(WIN, move_color, (mx, my), 10)
-                    for num, code in enumerate(code_objects):
-                        if code.collidepoint(mx, my) and not hidden:
-                            current_code[num] = dict(zip(pegs.values(), pegs.keys()))[
-                                move_color
-                            ]
-                            break
-                    if not mouse_down:
-                        dragging = False
-                        move_color = None
-                        draw_board_set_code(current_code, hidden)
-            elif state == states.guess:
-                current_code = [None, None, None, None]
+                    board.eye_click((mx, my))
+
+                    board.checkbox_click_code((mx, my), checkbox)
+
+                board.set_peg_code((mx, my), mouse_down)
+
+            elif board.state == states.guess:
+                board.current_code = [None, None, None, None]
                 draw_board_guess(
-                    current_code,
-                    guess_code,
-                    guess_stage,
-                    prev_guesses,
-                    prev_rates=prev_rates,
+                    board.current_code,
+                    board.guess_code,
+                    board.guess_stage,
+                    board.prev_guesses,
+                    prev_rates=board.prev_rates,
                 )
                 checkbox = circle(WIN, (50, 200, 50), (200, 575 - 500), 10)
                 pygame.draw.line(WIN, (0, 0, 0), (195, 575 - 500), (200, 580 - 500), 1)
@@ -351,51 +457,54 @@ def main():
                 text = font.render("Make your guess", True, (0, 0, 0))
                 text_rect = text.get_rect(center=(200, 175))
                 WIN.blit(text, text_rect)
-                for num, peg in enumerate(peg_objects):
+                for num, peg in enumerate(board.peg_objects):
                     if peg.collidepoint(mx, my):
-                        dragging = mouse_down
-                        move_color = pegs[list(pegs)[num]]
-                if dragging:
+                        board.dragging = mouse_down
+                        board.move_color = pegs[list(pegs)[num]]
+                if board.dragging:
                     draw_board_guess(
-                        current_code,
-                        guess_code,
-                        guess_stage,
-                        prev_guesses,
-                        prev_rates=prev_rates,
+                        board.current_code,
+                        board.guess_code,
+                        board.guess_stage,
+                        board.prev_guesses,
+                        prev_rates=board.prev_rates,
                     )
-                    circle(WIN, move_color, (mx, my), 10)
-                    for num, code in enumerate(code_objects):
-                        if code.collidepoint(mx, my) and not hidden:
-                            guess_code[num] = dict(zip(pegs.values(), pegs.keys()))[
-                                move_color
-                            ]
-                            prev_guesses[guess_stage - 1][num] = guess_code[num]
+                    circle(WIN, board.move_color, (mx, my), 10)
+                    for num, code in enumerate(board.code_objects):
+                        if code.collidepoint(mx, my) and not board.hidden:
+                            board.guess_code[num] = dict(
+                                zip(pegs.values(), pegs.keys())
+                            )[board.move_color]
+                            board.prev_guesses[board.guess_stage - 1][
+                                num
+                            ] = board.guess_code[num]
                             break
                     if not mouse_down:
-                        dragging = False
-                        move_color = None
+                        board.dragging = False
+                        board.move_color = None
                         draw_board_guess(
-                            current_code,
-                            guess_code,
-                            guess_stage,
-                            prev_guesses,
-                            prev_rates=prev_rates,
+                            board.current_code,
+                            board.guess_code,
+                            board.guess_stage,
+                            board.prev_guesses,
+                            prev_rates=board.prev_rates,
                         )
                 if pygame.mouse.get_pressed()[0]:
-                    if checkbox.collidepoint(mx, my) and guess_code.count(None) == 0:
-                        state = states.rate
-                        guess_stage += 1
+                    if (
+                        checkbox.collidepoint(mx, my)
+                        and board.guess_code.count(None) == 0
+                    ):
+                        board.state = states.rate
+                        board.guess_stage += 1
 
-                        if guess_code == actual_code:
-                            big_font = pygame.font.Font(None, 100)
+                        if board.guess_code == board.actual_code:
                             text = font.render("Guesser wins", True, (255, 255, 255))
                             text_rect = text.get_rect(center=(WIDTH // 2, HEIGHT // 2))
                             WIN.blit(text, text_rect)
                             pygame.display.update()
                             pygame.time.delay(2000)
                             run = False
-                        elif guess_stage == 9:
-                            big_font = pygame.font.Font(None, 100)
+                        elif board.guess_stage == 9:
                             text = font.render("Codemaker wins", True, (255, 255, 255))
                             text_rect = text.get_rect(center=(WIDTH // 2, HEIGHT // 2))
                             WIN.blit(text, text_rect)
@@ -403,51 +512,65 @@ def main():
                             pygame.time.delay(2000)
                             run = False
                         draw_board_guess(
-                            current_code,
-                            guess_code,
-                            guess_stage,
-                            prev_guesses,
+                            board.current_code,
+                            board.guess_code,
+                            board.guess_stage,
+                            board.prev_guesses,
                             True,
-                            prev_rates=prev_rates,
+                            prev_rates=board.prev_rates,
                         )
-                        guess_code = [None, None, None, None]
-            elif state == states.rate:
-                rate_objects = draw_board_rate(prev_guesses, prev_rates, guess_stage)
-                check_pegs = make_check_pegs()
+                        board.guess_code = [None, None, None, None]
+            elif board.state == states.rate:
+                board.rate_objects = draw_board_rate(
+                    board.prev_guesses, board.prev_rates, board.guess_stage
+                )
+                board.check_pegs = make_check_pegs()
                 checkbox = circle(WIN, (50, 200, 50), (200, 575 - 500), 10)
                 pygame.draw.line(WIN, (0, 0, 0), (195, 575 - 500), (200, 580 - 500), 1)
                 pygame.draw.line(WIN, (0, 0, 0), (200, 580 - 500), (203, 569 - 500), 1)
                 text = font.render("Make your correction", True, (0, 0, 0))
                 text_rect = text.get_rect(center=(200, 175))
                 WIN.blit(text, text_rect)
-                for num, peg in enumerate(check_pegs):
+                for num, peg in enumerate(board.check_pegs):
                     if peg.collidepoint(mx, my):
-                        dragging = mouse_down
-                        move_color = [pegs["white"], pegs["red"], pegs["black"]][num]
-                if dragging:
-                    draw_board_rate(prev_guesses, prev_rates, guess_stage)
-                    circle(WIN, move_color, (mx, my), 5)
-                    for num, code in enumerate(code_objects):
+                        board.dragging = mouse_down
+                        board.move_color = [pegs["white"], pegs["red"], pegs["black"]][
+                            num
+                        ]
+                if board.dragging:
+                    draw_board_rate(
+                        board.prev_guesses, board.prev_rates, board.guess_stage
+                    )
+                    circle(WIN, board.move_color, (mx, my), 5)
+                    for num, code in enumerate(board.code_objects):
                         if code.collidepoint(mx, my):
-                            rate[num] = dict(zip(pegs.values(), pegs.keys()))[
-                                move_color
+                            board.rate[num] = dict(zip(pegs.values(), pegs.keys()))[
+                                board.move_color
                             ]
-                            prev_rates[guess_stage - 2][num] = rate[num]
+                            board.prev_rates[board.guess_stage - 2][num] = board.rate[
+                                num
+                            ]
                             break
                     if not mouse_down:
-                        dragging = False
-                        move_color = None
-                        draw_board_rate(prev_guesses, prev_rates, guess_stage)
+                        board.dragging = False
+                        board.move_color = None
+                        draw_board_rate(
+                            board.prev_guesses, board.prev_rates, board.guess_stage
+                        )
                 if pygame.mouse.get_pressed()[0]:
+
+                    # TODO: Fix this
                     if checkbox.collidepoint(mx, my):
-                        state = states.guess
-                        for num, peg in enumerate(rate):
+                        board.state = states.guess
+                        for num, peg in enumerate(board.rate):
                             if peg == None:
-                                rate[num] = pegs["black"]
+                                board.rate[num] = pegs["black"]
 
                             if peg == "red":
-                                for guessed_peg in prev_guesses[guess_stage - 1]:
-                                    if not guessed_peg == actual_code[num]:
+                                for guessed_peg in board.prev_guesses[
+                                    board.guess_stage - 1
+                                ]:
+                                    if not guessed_peg == board.actual_code[num]:
                                         text = font.render(
                                             "You have made a wrong correction",
                                             True,
@@ -457,14 +580,16 @@ def main():
                                         WIN.blit(text, text_rect)
                                         pygame.display.update()
                                         pygame.time.delay(2000)
-                                        state = states.rate
+                                        board.state = states.rate
                                         break
 
                             elif peg == "white":
-                                for guessed_peg in prev_guesses[guess_stage - 1]:
+                                for guessed_peg in board.prev_guesses[
+                                    board.guess_stage - 1
+                                ]:
                                     if not (
-                                        guessed_peg != actual_code[num]
-                                        and guessed_peg in actual_code
+                                        guessed_peg != board.actual_code[num]
+                                        and guessed_peg in board.actual_code
                                     ):
                                         text = font.render(
                                             "You have made a wrong correction",
@@ -475,12 +600,14 @@ def main():
                                         WIN.blit(text, text_rect)
                                         pygame.display.update()
                                         pygame.time.delay(2000)
-                                        state = states.rate
+                                        board.state = states.rate
                                         break
 
                             elif peg == "black":
-                                for guessed_peg in prev_guesses[guess_stage - 1]:
-                                    if guessed_peg == actual_code[num]:
+                                for guessed_peg in board.prev_guesses[
+                                    board.guess_stage - 1
+                                ]:
+                                    if guessed_peg == board.actual_code[num]:
                                         text = font.render(
                                             "You have made a wrong correction",
                                             True,
@@ -490,10 +617,12 @@ def main():
                                         WIN.blit(text, text_rect)
                                         pygame.display.update()
                                         pygame.time.delay(2000)
-                                        state = states.rate
+                                        board.state = states.rate
                                         break
-                        rate = [None, None, None, None]
-                        draw_board_rate(prev_guesses, prev_rates, guess_stage)
+                        board.rate = [None, None, None, None]
+                        draw_board_rate(
+                            board.prev_guesses, board.prev_rates, board.guess_stage
+                        )
 
         pygame.display.update()
 
