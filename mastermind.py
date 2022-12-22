@@ -640,12 +640,6 @@ class Board:
                 else:
                     black += 1
 
-            print(
-                self.rate,
-                self.prev_guesses[self.guess_stage - 2],
-                self.actual_code,
-                (red, white, black),
-            )
             if (
                 self.rate.count("red") == red
                 and self.rate.count("white") == white
