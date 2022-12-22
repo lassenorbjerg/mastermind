@@ -386,7 +386,6 @@ def main():
                         state = states.rate
                         guess_stage += 1
 
-                        print(guess_code, actual_code)
                         if guess_code == actual_code:
                             big_font = pygame.font.Font(None, 100)
                             text = font.render("Guesser wins", True, (255, 255, 255))
