@@ -702,7 +702,6 @@ def main():
 
                 if pygame.mouse.get_pressed()[0]:
                     board.click_checkbox_rate((mx, my), checkbox)
-                    # TODO: Fix this
 
         pygame.display.update()
 
