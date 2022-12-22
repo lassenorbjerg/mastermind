@@ -1,7 +1,8 @@
+import enum
+import math
+
 import pygame
 from pygame.draw import circle
-import math
-import enum
 
 WIDTH, HEIGHT = 400, 800
 WIN = pygame.display.set_mode((WIDTH, HEIGHT))
@@ -21,12 +22,8 @@ pegs = {
     "black": (0, 0, 0),
 }
 
-hidden_eye = pygame.transform.scale(
-    pygame.image.load("mastermind/assets/hide.jpg"), (20, 20)
-)
-visible_eye = pygame.transform.scale(
-    pygame.image.load("mastermind/assets/show.jpg"), (20, 20)
-)
+hidden_eye = pygame.transform.scale(pygame.image.load("assets/hide.jpg"), (20, 20))
+visible_eye = pygame.transform.scale(pygame.image.load("assets/show.jpg"), (20, 20))
 
 
 def make_pegs(displacement: tuple[int, int] = (0, 0)):
@@ -598,6 +595,69 @@ class Board:
 
         return check_pegs[self.guess_stage - 1]
 
+    def rate_peg_drag(self, mouse_pos, mouse_down):
+        mx, my = mouse_pos
+        for num, peg in enumerate(self.check_pegs):
+            if peg.collidepoint(mx, my):
+                self.dragging = mouse_down
+                self.move_color = [pegs["white"], pegs["red"], pegs["black"]][num]
+
+    def set_peg_rate(self, mouse_pos, mouse_down):
+        mx, my = mouse_pos
+        if self.dragging:
+            self.draw_board_rate()
+            circle(WIN, self.move_color, (mx, my), 5)
+            for num, code in enumerate(self.code_objects):
+                if code.collidepoint(mx, my):
+                    self.rate[num] = dict(zip(pegs.values(), pegs.keys()))[
+                        self.move_color
+                    ]
+                    self.prev_rates[self.guess_stage - 2][num] = self.rate[num]
+                    break
+            if not mouse_down:
+                self.dragging = False
+                self.move_color = None
+                self.draw_board_rate()
+
+    def click_checkbox_rate(self, mouse_pos, checkbox):
+        mx, my = mouse_pos
+        if checkbox.collidepoint(mx, my):
+            red = 0
+            white = 0
+            black = 0
+
+            for num, peg in enumerate(self.rate):
+                if peg is None:
+                    self.rate[num] = "black"
+            for num, actual_peg in enumerate(self.actual_code):
+                if self.prev_guesses[self.guess_stage - 2][num] == actual_peg:
+                    red += 1
+                elif (
+                    self.prev_guesses[self.guess_stage - 2][num]
+                    in self.actual_code[num:]
+                ):
+                    white += 1
+                else:
+                    black += 1
+
+            print(
+                self.rate,
+                self.prev_guesses[self.guess_stage - 2],
+                self.actual_code,
+                (red, white, black),
+            )
+            if (
+                self.rate.count("red") == red
+                and self.rate.count("white") == white
+                and self.rate.count("black") == black
+            ):
+                self.prev_rates[self.guess_stage - 2] = self.rate
+                self.rate = [None, None, None, None]
+                self.draw_board_rate()
+                self.state = states.guess
+            else:
+                self.make_text("You have made a wrong correction", (200, 250))
+
 
 def main():
     run = True
@@ -640,100 +700,15 @@ def main():
             elif board.state == states.rate:
                 board.rate_objects = board.draw_board_rate()
                 board.check_pegs = board.make_check_pegs()
-                checkbox = circle(WIN, (50, 200, 50), (200, 575 - 500), 10)
-                pygame.draw.line(WIN, (0, 0, 0), (195, 575 - 500), (200, 580 - 500), 1)
-                pygame.draw.line(WIN, (0, 0, 0), (200, 580 - 500), (203, 569 - 500), 1)
-                text = font.render("Make your correction", True, (0, 0, 0))
-                text_rect = text.get_rect(center=(200, 175))
-                WIN.blit(text, text_rect)
-                for num, peg in enumerate(board.check_pegs):
-                    if peg.collidepoint(mx, my):
-                        board.dragging = mouse_down
-                        board.move_color = [pegs["white"], pegs["red"], pegs["black"]][
-                            num
-                        ]
-                if board.dragging:
-                    board.draw_board_rate()
-                    circle(WIN, board.move_color, (mx, my), 5)
-                    for num, code in enumerate(board.code_objects):
-                        if code.collidepoint(mx, my):
-                            board.rate[num] = dict(zip(pegs.values(), pegs.keys()))[
-                                board.move_color
-                            ]
-                            board.prev_rates[board.guess_stage - 2][num] = board.rate[
-                                num
-                            ]
-                            break
-                    if not mouse_down:
-                        board.dragging = False
-                        board.move_color = None
-                        board.draw_board_rate()
+                checkbox = board.draw_checkbox((0, -500))
+                board.make_text("Make your correction", (200, 175), (0, 0, 0))
+                board.rate_peg_drag((mx, my), mouse_down)
+
+                board.set_peg_rate((mx, my), mouse_down)
+
                 if pygame.mouse.get_pressed()[0]:
-
+                    board.click_checkbox_rate((mx, my), checkbox)
                     # TODO: Fix this
-                    if checkbox.collidepoint(mx, my):
-                        board.state = states.guess
-                        for num, peg in enumerate(board.rate):
-                            if peg == None:
-                                board.rate[num] = pegs["black"]
-
-                            if peg == "red":
-                                for guessed_peg in board.prev_guesses[
-                                    board.guess_stage - 1
-                                ]:
-                                    if not guessed_peg == board.actual_code[num]:
-                                        text = font.render(
-                                            "You have made a wrong correction",
-                                            True,
-                                            (0, 0, 0),
-                                        )
-                                        text_rect = text.get_rect(center=(200, 250))
-                                        WIN.blit(text, text_rect)
-                                        pygame.display.update()
-                                        pygame.time.delay(2000)
-                                        board.state = states.rate
-                                        break
-
-                            elif peg == "white":
-                                for guessed_peg in board.prev_guesses[
-                                    board.guess_stage - 1
-                                ]:
-                                    if not (
-                                        guessed_peg != board.actual_code[num]
-                                        and guessed_peg in board.actual_code
-                                    ):
-                                        text = font.render(
-                                            "You have made a wrong correction",
-                                            True,
-                                            (0, 0, 0),
-                                        )
-                                        text_rect = text.get_rect(center=(200, 250))
-                                        WIN.blit(text, text_rect)
-                                        pygame.display.update()
-                                        pygame.time.delay(2000)
-                                        board.state = states.rate
-                                        break
-
-                            elif peg == "black":
-                                for guessed_peg in board.prev_guesses[
-                                    board.guess_stage - 1
-                                ]:
-                                    if guessed_peg == board.actual_code[num]:
-                                        text = font.render(
-                                            "You have made a wrong correction",
-                                            True,
-                                            (0, 0, 0),
-                                        )
-                                        text_rect = text.get_rect(center=(200, 250))
-                                        WIN.blit(text, text_rect)
-                                        pygame.display.update()
-                                        pygame.time.delay(2000)
-                                        board.state = states.rate
-                                        break
-                        board.rate = [None, None, None, None]
-                        draw_board_rate(
-                            board.prev_guesses, board.prev_rates, board.guess_stage
-                        )
 
         pygame.display.update()
 
